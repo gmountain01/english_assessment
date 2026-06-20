@@ -122,6 +122,30 @@
   }
   .del-elem:hover{background:rgba(181,72,46,.1);}
 
+  /* 키워드 그룹 */
+  .kw-groups-wrap{ margin-top:12px; }
+  .kw-groups-label{ font-size:12px; font-weight:700; color:var(--ink); margin-bottom:8px; display:block; }
+  .kw-groups-label .hint{ font-weight:400; color:var(--muted); }
+  .kw-group{
+    border:1.5px solid var(--line); border-radius:3px;
+    padding:10px 12px 10px; margin-bottom:8px; background:var(--card); position:relative;
+  }
+  .kw-group-header{ display:flex; align-items:center; gap:8px; margin-bottom:7px; }
+  .kw-group-num{ font-size:11px; font-weight:700; color:var(--accent2); letter-spacing:.08em; min-width:52px; }
+  .kw-group-header input{ flex:1; padding:5px 8px; border:1.5px solid var(--line); border-radius:3px; font-size:13px; background:#fff; }
+  .del-group{ border:none; background:none; color:var(--muted); cursor:pointer; font-size:15px; line-height:1; padding:2px 4px; border-radius:3px; }
+  .del-group:hover{ color:var(--accent); background:rgba(181,72,46,.08); }
+  .kw-group textarea{ width:100%; padding:7px 10px; border:1.5px solid var(--line); border-radius:3px; font-size:13px; background:#fff; resize:vertical; min-height:48px; font-family:inherit; }
+  .kw-group textarea:focus{ border-color:var(--accent2); outline:none; }
+  .kw-group-hint{ font-size:11px; color:var(--muted); margin-top:4px; }
+  .add-group-btn{ font-size:12px; color:var(--accent2); border:1.5px dashed var(--accent2); background:none; border-radius:3px; padding:5px 12px; cursor:pointer; font-family:inherit; margin-top:2px; }
+  .add-group-btn:hover{ background:rgba(47,93,80,.07); }
+  /* 그룹 match_type 뱃지 (결과 화면) */
+  .badge-kw{ display:inline-block; font-size:10.5px; padding:1px 6px; border-radius:3px; margin-left:6px; font-weight:700; }
+  .badge-kw.keyword{ background:rgba(47,93,80,.13); color:var(--good); }
+  .badge-kw.ai_substitute{ background:rgba(122,100,32,.13); color:var(--gold); }
+  .badge-kw.fail{ background:rgba(181,72,46,.10); color:var(--accent); }
+
   .btn{
     font-family:inherit; font-weight:700; font-size:13.5px; cursor:pointer;
     padding:11px 20px; border-radius:3px; border:1.5px solid var(--ink);
@@ -1155,13 +1179,36 @@ $('#cfg-clear').onclick=()=>{
 const DEFAULT_ELEMS = [
   { name:"기존 언어의 한계", pts:5, scoring:"binary",
     desc:"일상 언어(ordinary language/lexicon)로는 중요한 철학적 구분이 불가능함을 명시",
-    keywords:"한계: fail, insufficient, limited, not enough / 구분: distinction, difference, differentiate, separate",
-    kwLogic:"AND" },
+    groups:[
+      { label:"한계", keywords:"fail, insufficient, limited, not enough" },
+      { label:"구분", keywords:"distinction, difference, differentiate, separate" }
+    ]},
   { name:"새로운 정의 도입", pts:5, scoring:"binary",
     desc:"새로운 용어나 정의(stipulative definition)를 도입해야 할 필요성을 명시",
-    keywords:"용어: new term, new concept, definition / 도입 행위: introduce, coin, create, use",
-    kwLogic:"AND" }
+    groups:[
+      { label:"용어", keywords:"new term, new concept, definition" },
+      { label:"도입 행위", keywords:"introduce, coin, create, use" }
+    ]}
 ];
+
+// 구형 keywords 문자열 → groups 배열 마이그레이션
+function migrateElemGroups(el){
+  if(el.groups && el.groups.length) return el; // 이미 신규 형식
+  const raw = el.keywords || '';
+  const parts = raw.split('/').map(s=>s.trim()).filter(Boolean);
+  el.groups = parts.length
+    ? parts.map((p,idx)=>{
+        const colon = p.indexOf(':');
+        if(colon > 0){
+          return { label: p.slice(0,colon).trim(), keywords: p.slice(colon+1).trim() };
+        }
+        return { label:`그룹 ${idx+1}`, keywords: p };
+      })
+    : [{ label:"그룹 1", keywords:"" }];
+  delete el.keywords;
+  delete el.kwLogic;
+  return el;
+}
 
 /* ---------- STEP NAV ---------- */
 function goStep(n){
@@ -1201,6 +1248,20 @@ $$('[data-go]').forEach(b=>b.addEventListener('click',()=>goStep(+b.dataset.go))
 function renderElems(){
   const wrap = $('#elem-list'); wrap.innerHTML='';
   state.elements.forEach((el,i)=>{
+    migrateElemGroups(el); // 구형 데이터 자동 마이그레이션
+    const groups = el.groups || [];
+
+    const groupsHTML = groups.map((g,gi)=>`
+      <div class="kw-group" data-gi="${gi}">
+        <div class="kw-group-header">
+          <span class="kw-group-num">그룹 ${gi+1}</span>
+          <input type="text" placeholder="그룹 이름 (예: 한계)" value="${esc(g.label||'')}" data-i="${i}" data-gi="${gi}" data-gk="label">
+          <button class="del-group" title="그룹 삭제" data-i="${i}" data-gi="${gi}">✕</button>
+        </div>
+        <textarea placeholder="필수 키워드를 쉼표로 구분 (예: fail, insufficient, limited)" data-i="${i}" data-gi="${gi}" data-gk="keywords">${esc(g.keywords||'')}</textarea>
+        <div class="kw-group-hint">쉼표로 구분된 키워드 중 하나라도 답안에 있으면 이 그룹 통과 · 없으면 AI가 대체 표현 탐색</div>
+      </div>`).join('');
+
     const div=document.createElement('div');
     div.className='elem';
     div.innerHTML=`
@@ -1226,34 +1287,59 @@ function renderElems(){
         <span class="lab" style="font-size:12px">설명 <span class="hint">(이 요소가 무엇을 측정하는지)</span></span>
         <input type="text" value="${esc(el.desc)}" data-i="${i}" data-k="desc">
       </label>
-      <label class="fld">
-        <span class="lab" style="font-size:12px">인정 키워드/조건 <span class="hint">(" / "로 그룹 구분, 그룹 내 쉼표는 동의어·환언)</span></span>
-        <textarea data-i="${i}" data-k="keywords" style="min-height:60px">${esc(el.keywords)}</textarea>
-      </label>
-      <div style="display:flex;align-items:center;gap:10px;margin-top:6px;">
-        <span class="lab" style="font-size:12px;margin:0;">그룹 간 조건</span>
-        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;">
-          <input type="radio" name="kwLogic-${i}" value="AND" ${(el.kwLogic||'AND')==='AND'?'checked':''} data-i="${i}" data-k="kwLogic">
-          <b>AND</b> <span style="color:var(--muted);font-size:12px">— 모든 그룹이 답안에 있어야 만점</span>
-        </label>
-        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;">
-          <input type="radio" name="kwLogic-${i}" value="OR" ${(el.kwLogic||'AND')==='OR'?'checked':''} data-i="${i}" data-k="kwLogic">
-          <b>OR</b> <span style="color:var(--muted);font-size:12px">— 하나의 그룹만 있어도 만점</span>
-        </label>
+      <div class="kw-groups-wrap">
+        <span class="kw-groups-label">필수 키워드 그룹 <span class="hint">— 모든 그룹을 통과해야 만점 (AND 조건) · 그룹 내 키워드는 OR</span></span>
+        <div class="kw-group-list">${groupsHTML}</div>
+        <button class="add-group-btn" data-i="${i}">＋ 그룹 추가</button>
       </div>`;
+
     div.querySelector('.del-elem').onclick=()=>{ state.elements.splice(i,1); renderElems(); };
+
+    // 기본 필드 이벤트 (name, pts, scoring, desc)
+    div.querySelectorAll('[data-k]').forEach(inp=>{
+      const handler=e=>{
+        const ei=+e.target.dataset.i, k=e.target.dataset.k;
+        state.elements[ei][k]= k==='pts' ? +e.target.value : e.target.value;
+      };
+      inp.addEventListener('input', handler);
+      inp.addEventListener('change', handler);
+    });
+
+    // 그룹 필드 이벤트 (label, keywords)
+    div.querySelectorAll('[data-gk]').forEach(inp=>{
+      inp.addEventListener('input', e=>{
+        const ei=+e.target.dataset.i, gi=+e.target.dataset.gi, gk=e.target.dataset.gk;
+        if(!state.elements[ei].groups[gi]) return;
+        state.elements[ei].groups[gi][gk] = e.target.value;
+      });
+    });
+
+    // 그룹 삭제
+    div.querySelectorAll('.del-group').forEach(btn=>{
+      btn.onclick=()=>{
+        const ei=+btn.dataset.i, gi=+btn.dataset.gi;
+        if(state.elements[ei].groups.length <= 1){ showToast('그룹은 최소 1개 이상 필요합니다.','error'); return; }
+        state.elements[ei].groups.splice(gi,1);
+        renderElems();
+      };
+    });
+
+    // 그룹 추가
+    div.querySelector('.add-group-btn').onclick=()=>{
+      const ei=+div.querySelector('.add-group-btn').dataset.i;
+      const n = state.elements[ei].groups.length + 1;
+      state.elements[ei].groups.push({ label:`그룹 ${n}`, keywords:"" });
+      renderElems();
+    };
+
     wrap.appendChild(div);
   });
-  wrap.querySelectorAll('[data-k]').forEach(inp=>{
-    const handler=e=>{
-      const i=+e.target.dataset.i, k=e.target.dataset.k;
-      state.elements[i][k]= k==='pts' ? +e.target.value : e.target.value;
-    };
-    inp.addEventListener('input', handler);
-    inp.addEventListener('change', handler);
-  });
 }
-$('#add-elem').onclick=()=>{ state.elements.push({name:"새 요소",pts:5,scoring:"binary",desc:"",keywords:"",kwLogic:"AND"}); renderElems(); };
+$('#add-elem').onclick=()=>{
+  state.elements.push({name:"새 요소", pts:5, scoring:"binary", desc:"",
+    groups:[{label:"그룹 1", keywords:""}]});
+  renderElems();
+};
 $('#reset-elem').onclick=()=>{ state.elements=JSON.parse(JSON.stringify(DEFAULT_ELEMS)); renderElems(); };
 function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
@@ -1593,11 +1679,21 @@ function buildStep1Prompt(){
 
   const elemSpec=state.elements.map((e,i)=>{
     const mode = (e.scoring||'binary')==='partial' ? '부분 점수 (0~'+e.pts+'점)' : '이분 채점 (0점 또는 '+e.pts+'점)';
-    const logic = (e.kwLogic||'AND')==='AND'
-      ? '【AND 조건】 "/" 로 구분된 모든 그룹의 키워드(또는 동의어·환언)가 답안에 모두 등장해야 인정. 하나라도 빠지면 불인정.'
-      : '【OR 조건】 "/" 로 구분된 그룹 중 하나라도 답안에 등장하면 인정.';
-    return `  - Element ${i+1} "${e.name}" (배점 ${e.pts}점, ${mode})\n    측정 대상: ${e.desc}\n    인정 키워드/조건: ${e.keywords}\n    그룹 간 조건: ${logic}`;
-  }).join('\n');
+    const groups = (e.groups && e.groups.length) ? e.groups : (e.keywords||'').split('/').map((s,gi)=>({label:`그룹 ${gi+1}`,keywords:s.replace(/^[^:]+:/,'').trim()}));
+    const groupSpec = groups.map((g,gi)=>{
+      const kws = (g.keywords||'').split(',').map(k=>k.trim()).filter(Boolean);
+      return `  그룹 ${gi+1}${g.label?` "${g.label}"`:''}
+      필수 키워드: ${kws.join(' / ')||'(없음)'}
+      판정:
+        1단계 — 위 키워드 중 하나라도 답안에 있으면 → 통과 (match_type: "keyword", matched에 해당 단어 기록)
+        2단계 — 없으면 동일 의미 대체 표현이 있는지 판단 → 있으면 → 통과 (match_type: "ai_substitute", matched에 대체 표현 기록, reasoning에 왜 대체로 인정했는지 반드시 명시)
+        3단계 — 없으면 → 불통과 (match_type: "fail", matched: null)`;
+    }).join('\n');
+    return `Element ${i+1} "${e.name}" (배점 ${e.pts}점, ${mode})
+  측정 대상: ${e.desc}
+  [키워드 그룹 — 모든 그룹 통과 시 만점 (AND), 하나라도 불통과 시 0점]
+${groupSpec}`;
+  }).join('\n\n');
 
   // 요소별 채점 방식에 따른 CoT 지시
   const cotStep3 = (hasBinary && hasPartial)
@@ -1680,7 +1776,22 @@ ${scoringReminder}
 반드시 아래 JSON 객체 하나만 출력하라. 코드펜스(\`\`\`)나 설명 문구를 절대 붙이지 마라.
 {
   "elements": [
-    { "name":"요소명", "content_score":숫자, "max":숫자, "reasoning":"이 요소에 대한 단계별 판단 근거" }
+    {
+      "name":"요소명",
+      "content_score":숫자,
+      "max":숫자,
+      "groups":[
+        {
+          "group":그룹번호(1부터),
+          "label":"그룹 이름",
+          "passed":true또는false,
+          "match_type":"keyword 또는 ai_substitute 또는 fail",
+          "matched":"답안에서 확인된 단어 또는 표현 (없으면 null)",
+          "reasoning":"이 그룹의 판단 근거 (ai_substitute일 경우 왜 대체로 인정했는지 반드시 구체적으로 기술)"
+        }
+      ],
+      "reasoning":"요소 전체 판단 요약 (모든 그룹 AND 결과 및 최종 점수 근거)"
+    }
   ]
 }
 
@@ -2313,7 +2424,7 @@ function renderFeedback(maxT){
       const scTag = sc==='partial'
         ? '<span style="font-size:10px;color:var(--accent2);border:1px solid var(--accent2);padding:0 4px;border-radius:3px;margin-left:6px;">부분</span>'
         : '<span style="font-size:10px;color:var(--muted);border:1px solid var(--line);padding:0 4px;border-radius:3px;margin-left:6px;">0/만점</span>';
-      breakdown+=`<div style="margin-bottom:6px;">`;
+      breakdown+=`<div style="margin-bottom:8px;">`;
       const maxLabel = e.max!=null ? '/'+e.max : '';
       breakdown+=`<span class="chip">${esc(e.name)}: ${cs}${maxLabel}</span>${scTag}`;
       if(cs>0){
@@ -2321,7 +2432,25 @@ function renderFeedback(maxT){
       } else {
         breakdown+=`<span style="font-size:11.5px; color:var(--muted);"> 미인정(0)</span>`;
       }
-      if(e.reasoning) breakdown+=`<div style="font-size:11.5px; color:var(--fg); margin:2px 0 0 8px;">💬 ${esc(e.reasoning)}</div>`;
+      // 그룹별 판정 결과
+      if(e.groups && e.groups.length){
+        const badgeLabel = { keyword:'필수 키워드 ✓', ai_substitute:'AI 대체 인정 ⚠', fail:'미통과 ✗' };
+        e.groups.forEach(grp=>{
+          const mt = grp.match_type || (grp.passed ? 'keyword' : 'fail');
+          breakdown+=`<div style="display:flex;align-items:flex-start;gap:6px;margin:4px 0 0 10px;font-size:11.5px;">`;
+          breakdown+=`<span style="color:var(--muted);min-width:52px;">그룹 ${grp.group}${grp.label?` "${esc(grp.label)}"`:''}</span>`;
+          breakdown+=`<span class="badge-kw ${mt}">${badgeLabel[mt]||mt}</span>`;
+          if(grp.matched) breakdown+=`<span style="color:var(--ink);font-style:italic;">"${esc(grp.matched)}"</span>`;
+          breakdown+=`</div>`;
+          if(mt==='ai_substitute' && grp.reasoning){
+            breakdown+=`<div style="font-size:11px;color:var(--gold);margin:2px 0 2px 62px;">↳ ${esc(grp.reasoning)}</div>`;
+          }
+          if(mt==='fail' && grp.reasoning){
+            breakdown+=`<div style="font-size:11px;color:var(--muted);margin:2px 0 2px 62px;">↳ ${esc(grp.reasoning)}</div>`;
+          }
+        });
+      }
+      if(e.reasoning) breakdown+=`<div style="font-size:11.5px; color:var(--fg); margin:4px 0 0 8px;">💬 ${esc(e.reasoning)}</div>`;
       breakdown+=`</div>`;
     });
     // 총점 산출 과정 + 감점 상세 표시
@@ -2427,13 +2556,26 @@ function renderReview(maxT){
           const scTag2 = sc2==='partial'
             ? '<span style="font-size:10px;color:var(--accent2);border:1px solid var(--accent2);padding:0 4px;border-radius:3px;margin-left:6px;">부분</span>'
             : '<span style="font-size:10px;color:var(--muted);border:1px solid var(--line);padding:0 4px;border-radius:3px;margin-left:6px;">0/만점</span>';
-          let h='<div style="margin-bottom:6px;">';
+          let h='<div style="margin-bottom:8px;">';
           const mx=e.max!=null?'/'+e.max:'';
           h+='<span class="chip">'+esc(e.name)+': '+cs+mx+'</span>'+scTag2;
           h+=cs>0
             ?'<span style="font-size:11.5px;color:var(--muted);"> 내용 인정('+cs+'점)</span>'
             :'<span style="font-size:11.5px;color:var(--muted);"> 미인정(0)</span>';
-          if(e.reasoning) h+='<div style="font-size:11.5px;color:var(--fg);margin:2px 0 0 8px;">💬 '+esc(e.reasoning)+'</div>';
+          if(e.groups && e.groups.length){
+            const blRv={keyword:'필수 키워드 ✓',ai_substitute:'AI 대체 인정 ⚠',fail:'미통과 ✗'};
+            e.groups.forEach(grp=>{
+              const mt=grp.match_type||(grp.passed?'keyword':'fail');
+              h+='<div style="display:flex;align-items:flex-start;gap:6px;margin:4px 0 0 10px;font-size:11.5px;">';
+              h+='<span style="color:var(--muted);min-width:52px;">그룹 '+grp.group+(grp.label?' "'+esc(grp.label)+'"':'')+' </span>';
+              h+='<span class="badge-kw '+mt+'">'+(blRv[mt]||mt)+'</span>';
+              if(grp.matched) h+='<span style="color:var(--ink);font-style:italic;">"'+esc(grp.matched)+'"</span>';
+              h+='</div>';
+              if(mt==='ai_substitute'&&grp.reasoning) h+='<div style="font-size:11px;color:var(--gold);margin:2px 0 2px 62px;">↳ '+esc(grp.reasoning)+'</div>';
+              if(mt==='fail'&&grp.reasoning) h+='<div style="font-size:11px;color:var(--muted);margin:2px 0 2px 62px;">↳ '+esc(grp.reasoning)+'</div>';
+            });
+          }
+          if(e.reasoning) h+='<div style="font-size:11.5px;color:var(--fg);margin:4px 0 0 8px;">💬 '+esc(e.reasoning)+'</div>';
           h+='</div>';
           return h;
         }).join('')}${(()=>{
