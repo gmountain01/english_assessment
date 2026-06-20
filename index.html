@@ -482,7 +482,7 @@
       <span style="font-weight:700; color:var(--ink);">전공</span> AI융합교육전공 &nbsp;&nbsp;
       <span style="font-weight:700; color:var(--ink);">학번</span> 2024432156, 2024432157 &nbsp;&nbsp;
       <span style="font-weight:700; color:var(--ink);">이름</span> 조민영, 조아리 &nbsp;&nbsp;
-      <span style="font-weight:700; color:var(--ink);">ver</span> 1.5.0 &nbsp;&nbsp;
+      <span style="font-weight:700; color:var(--ink);">ver</span> 1.6.0 &nbsp;&nbsp;
       <span style="font-weight:700; color:var(--ink);">updated</span> 2026-06-20
     </div>
   </header>
@@ -1047,7 +1047,7 @@
         <table class="preview">
           <tr><th style="width:140px;">한계</th><th>내용</th><th style="width:140px;">보완 상태</th><th style="width:200px;">제언 / 보완 내용</th></tr>
           <tr><td style="font-weight:700;">피드백 검증 불가</td><td>피드백 문장 수·어조는 프롬프트 텍스트 지시만 가능, 코드 강제 불가</td><td><span class="scorepill sc-mid" style="font-size:10.5px;">부분 보완</span></td><td>피드백 문장 수 카운트 + 목표 이탈 경고 구현. 어조 검증은 한계로 남음</td></tr>
-          <tr><td style="font-weight:700;">감점 귀속 모호</td><td>단문 요약에서 두 요소가 혼재 시 오류 귀속이 불안정</td><td><span class="scorepill sc-lo" style="font-size:10.5px;">구조적 한계</span></td><td>다문장 과제 확장, 또는 답안 전체 단위 감점 대안 검토</td></tr>
+          <tr><td style="font-weight:700;">감점 귀속 모호</td><td>한 문장 안에 여러 평가 내용이 섞여 있을 때 어느 부분에서 오류가 생긴 건지 정확히 가려내기 어려움</td><td><span class="scorepill sc-mid" style="font-size:10.5px;">부분 보완</span></td><td>2026-06-20 키워드 그룹별 인정 조건 명시 및 판정 근거 기록 기능 추가. 단, AI 판단에 따라 결과가 달라질 수 있어 교사 최종 확인 필요</td></tr>
           <tr><td style="font-weight:700;">BKT/IRT 한계</td><td>BKT는 1회차로 추적 불가(최소 3~5회). IRT는 가상 모수로 절대값 무의미</td><td><span class="scorepill sc-lo" style="font-size:10.5px;">구조적 한계</span></td><td>다회차 평가 확장, 응답 데이터 축적 후 모수 캘리브레이션</td></tr>
         </table>
       </div>
@@ -1065,6 +1065,24 @@
           <tr><td style="font-weight:700;">학교 인프라</td><td>느린 인터넷, 방화벽 차단, 네트워크 끊김 대비 부족</td><td>PWA 오프라인 캐시, 자동 저장·재개 기능</td></tr>
           <tr><td style="font-weight:700;">피드백 효과 미검증</td><td>AI 생성 3수준 피드백의 실제 학습 향상 효과가 실증되지 않음</td><td>실험군·대조군 사전-사후 연구, 후속 평가 연계 추적</td></tr>
         </table>
+      </div>
+
+      <div style="margin-top:28px; padding:20px 22px; border:2px solid var(--accent2); border-radius:6px; background:rgba(47,93,80,.05);">
+        <div style="font-weight:700; font-size:15px; font-family:'Gowun Batang',serif; color:var(--accent2); margin-bottom:12px;">💡 AI 채점의 근본적인 한계와 선생님의 역할</div>
+        <p style="font-size:13.5px; line-height:1.85; color:var(--ink); margin:0 0 12px;">
+          AI가 학생 답안을 채점할 때, <b>같은 답안이라도 사용하는 AI 모델이나 채점 시점에 따라 점수가 조금씩 달라질 수 있습니다.</b> 이는 AI가 사람처럼 그때그때 맥락을 판단하기 때문이며, 어떤 AI를 쓰느냐에 따라 결과가 달라지는 것은 현재 AI 기술의 피할 수 없는 특성입니다.
+        </p>
+        <p style="font-size:13.5px; line-height:1.85; color:var(--ink); margin:0 0 12px;">
+          따라서 이 시스템은 <b>AI 채점 결과를 선생님의 '참고 자료'로만 활용</b>하도록 설계되어 있습니다. 특히 아래 상황에서는 선생님이 반드시 결과를 확인하고 최종 점수와 피드백을 직접 결정하시기 바랍니다.
+        </p>
+        <ul style="font-size:13px; color:var(--muted); line-height:2; margin:0 0 14px; padding-left:20px;">
+          <li>AI가 학생이 쓴 표현을 허용 가능한 대체 표현으로 스스로 판단해 인정한 경우</li>
+          <li>한 문장 안에 여러 평가 내용이 섞여 있어 어디서 감점이 발생했는지 불분명한 경우</li>
+          <li>같은 반 학생들의 점수 분포가 예상과 크게 다를 경우</li>
+        </ul>
+        <p style="font-size:13.5px; line-height:1.8; color:var(--ink); margin:0; padding-top:12px; border-top:1px dashed var(--line);">
+          <b>결론적으로, AI는 채점 부담을 줄여 주는 보조 도구이지 선생님의 판단을 대신하는 것이 아닙니다.</b> AI가 만들어 낸 점수와 피드백을 살펴보고, 수정할 부분은 수정한 뒤 최종 확정하는 과정이 반드시 필요합니다.
+        </p>
       </div>
     </section>
 
