@@ -482,7 +482,7 @@
       <span style="font-weight:700; color:var(--ink);">전공</span> AI융합교육전공 &nbsp;&nbsp;
       <span style="font-weight:700; color:var(--ink);">학번</span> 2024432156, 2024432157 &nbsp;&nbsp;
       <span style="font-weight:700; color:var(--ink);">이름</span> 조민영, 조아리 &nbsp;&nbsp;
-      <span style="font-weight:700; color:var(--ink);">ver</span> 1.4.0 &nbsp;&nbsp;
+      <span style="font-weight:700; color:var(--ink);">ver</span> 1.5.0 &nbsp;&nbsp;
       <span style="font-weight:700; color:var(--ink);">updated</span> 2026-06-20
     </div>
   </header>
@@ -1113,6 +1113,11 @@ const state = {
 };
 
 /* ===== API 설정 localStorage 캐시 ===== */
+// 유효 모델 목록 (모델 추가·제거 시 이 배열만 수정)
+// 검증일: 2026-06-20 기준 Anthropic API 지원 모델
+// claude-opus-4-6   : 최고 성능 (느림·고비용)
+// claude-sonnet-4-6 : 균형 — 기본값
+// claude-haiku-4-5-20251001 : 빠름·저렴
 const VALID_MODELS = ['claude-opus-4-6','claude-sonnet-4-6','claude-haiku-4-5-20251001'];
 const DEFAULT_MODEL = 'claude-sonnet-4-6';
 
@@ -1137,6 +1142,8 @@ function clearCachedConfig(){
   try{ localStorage.removeItem('edu-assess-config'); }catch(e){}
 }
 loadCachedConfig();
+// 캐시 로드 후 select UI를 state와 즉시 동기화 (devOpen() 호출 전에도 일치 보장)
+try{ $('#cfg-model').value = state.config.model; }catch(e){}
 
 /* ===== 개발자 설정 모달 (Ctrl+Alt+Enter) ===== */
 const devOverlay=$('#dev-overlay');
@@ -1982,8 +1989,9 @@ ${$('#passage').value}
 [검증 항목]
 1. **채점 방식 준수 검증**: 이분 채점 요소의 content_score가 0 또는 만점인지 확인하라. 부분 점수 요소는 0~만점 범위의 정수인지 확인하라. 위반 시 수정하라.
 2. **점수 산출 공식 재계산 검증**: total_score = max(0, Σ content_score − Σ(faithfulness_deduct + grammar_deduct + spelling_deduct + vocab_deduct)). 감점은 요소별이 아니라 총합에서 차감한다. 계산이 맞는지 확인하고, 틀리면 수정하라.
-3. **피드백-답안 일치성 확인**: 피드백(content_feedback, language_feedback 등)이 실제 학생 답안의 내용과 일치하는지 확인하라. 답안에 없는 오류를 지적하거나, 있는 오류를 빠뜨리지 않았는지 점검하라.
-4. **과잉칭찬/과소평가 탐지**: 점수가 낮은데 피드백이 지나치게 긍정적이거나, 점수가 높은데 피드백이 지나치게 부정적인 경우를 탐지하라. 점수와 피드백의 어조가 일관되도록 수정하라.
+3. **키워드 그룹 match_type 재확인**: 각 요소의 groups[] 배열에서 그룹별 match_type("keyword"/"ai_substitute"/"fail")이 답안 내용과 실제로 일치하는지 재검토하라. "keyword"로 표시됐으나 실제 답안에 해당 키워드가 없거나, "fail"로 표시됐으나 대체 표현이 존재한다면 수정하라. "ai_substitute"의 경우 reasoning이 충분히 구체적인지 확인하라.
+4. **피드백-답안 일치성 확인**: 피드백(content_feedback, language_feedback 등)이 실제 학생 답안의 내용과 일치하는지 확인하라. 답안에 없는 오류를 지적하거나, 있는 오류를 빠뜨리지 않았는지 점검하라.
+5. **과잉칭찬/과소평가 탐지**: 점수가 낮은데 피드백이 지나치게 긍정적이거나, 점수가 높은데 피드백이 지나치게 부정적인 경우를 탐지하라. 점수와 피드백의 어조가 일관되도록 수정하라.
 
 [출력 규칙]
 - 수정이 필요하면 수정된 전체 JSON을 출력하라.
