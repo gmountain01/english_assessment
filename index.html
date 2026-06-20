@@ -491,10 +491,10 @@
 
   <!-- STEP NAV -->
   <div class="steps" role="tablist">
-    <div class="step active" data-step="0" role="tab" tabindex="0" aria-selected="true">
+    <div class="step" data-step="0" role="tab" tabindex="0" aria-selected="false">
       <div class="n">OVERVIEW</div><div class="t">시스템 개요</div><div class="d">동작 원리 · 수식</div>
     </div>
-    <div class="step" data-step="1" role="tab" tabindex="0" aria-selected="false">
+    <div class="step active" data-step="1" role="tab" tabindex="0" aria-selected="true">
       <div class="n">STEP 01</div><div class="t">지문 · 루브릭</div><div class="d">평가 기준 설계</div>
     </div>
     <div class="step" data-step="2" role="tab" tabindex="0" aria-selected="false">
@@ -512,7 +512,7 @@
   </div>
 
   <!-- ============ OVERVIEW PANEL ============ -->
-  <div class="panel show" data-panel="0">
+  <div class="panel" data-panel="0">
 
     <!-- 인트로 -->
     <section class="card">
@@ -725,7 +725,7 @@
   </div>
 
   <!-- ============ STEP 1: RUBRIC ============ -->
-  <div class="panel" data-panel="1">
+  <div class="panel show" data-panel="1">
     <section class="card">
       <h2><span class="bar"></span>평가 지문 &amp; 문항</h2>
       <p class="sub">학생이 읽은 지문과 요약 문항을 입력하세요. 채점 기준의 근거가 됩니다.</p>
@@ -2911,11 +2911,13 @@ function loadSavedResults(){
 // 페이지 로드 시 저장된 채점 결과 복원
 (function restoreResultsOnLoad(){
   if(loadSavedResults()){
-    // 결과가 있으면 STEP 4로 이동하고 렌더링
+    // 결과 복원 후 STEP 1(지문·루브릭)에서 시작
     renderElems();
     renderResults();
-    goStep(4);
+    goStep(1);
     showToast(`이전 채점 결과 ${state.results.filter(r=>r.grade).length}명을 복원했습니다.`, 'ok');
+  } else {
+    goStep(1);
   }
 })();
 
